@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Factures fournisseurs</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#ffffff">
+  <style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f5f5f5; color: #333; }
+.app { max-width: 1200px; margin: 0 auto; padding: 1rem; }
+.topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 12px; }
+.topbar-left { display: flex; align-items: center; gap: 10px; }
+.app-title { font-size: 18px; font-weight: 500; }
+.btn-new { display: flex; align-items: center; gap: 6px; font-size: 13px; padding: 7px 14px; border-radius: 8px; border: 0.5px solid #ddd; background: transparent; cursor: pointer; font-weight: 500; transition: all 0.2s; }
+.btn-new:hover { background: #f0f0f0; }
+.nav { display: flex; gap: 4px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.nav-btn { font-size: 13px; padding: 6px 14px; border-radius: 8px; border: 0.5px solid #ddd; background: transparent; cursor: pointer; transition: all 0.2s; }
+.nav-btn.active { background: #f0f0f0; font-weight: 500; }
+.nav-btn:hover:not(.active) { background: #f0f0f0; }
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+.metric { background: #f9f9f9; border-radius: 8px; padding: 14px 16px; border: 0.5px solid #eee; }
+.metric-label { font-size: 12px; color: #666; margin-bottom: 6px; display: flex; align-items: center; gap: 4px; }
+.metric-value { font-size: 22px; font-weight: 500; }
+.metric-value.danger { color: #d32f2f; }
+.metric-value.warning { color: #f57c00; }
+.metric-value.success { color: #388e3c; }
+.section-title { font-size: 13px; font-weight: 500; color: #666; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+.alert-band { background: #ffebee; border: 0.5px solid #ef5350; border-radius: 8px; padding: 10px 14px; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; font-size: 13px; color: #d32f2f; }
+.warning-band { background: #fff3e0; border: 0.5px solid #ffb74d; border-radius: 8px; padding: 10px 14px; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; font-size: 13px; color: #f57c00; }
+.table-wrap { overflow-x: auto; border-radius: 8px; background: white; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+th { text-align: left; font-size: 11px; font-weight: 500; color: #666; padding: 8px 10px; border-bottom: 0.5px solid #eee; background: #f9f9f9; }
+td { padding: 10px 10px; border-bottom: 0.5px solid #eee; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #f9f9f9; }
+.badge { display: inline-block; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 20px; }
+.badge-retard { background: #ffebee; color: #d32f2f; }
+.badge-attente { background: #fff3e0; color: #f57c00; }
+.badge-paye { background: #e8f5e9; color: #388e3c; }
+.badge-nouveau { background: #e3f2fd; color: #1976d2; }
+.fournisseur-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; }
+.actions { display: flex; gap: 4px; align-items: center; }
+.icon-btn { background: transparent; border: none; cursor: pointer; color: #666; padding: 4px 6px; border-radius: 6px; font-size: 16px; display: flex; align-items: center; transition: all 0.2s; }
+.icon-btn:hover { background: #f0f0f0; color: #333; }
+.toolbar { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; flex-wrap: wrap; }
+.toolbar input[type=text], .toolbar select { font-size: 13px; padding: 6px 10px; border: 0.5px solid #ddd; border-radius: 6px; }
+.toolbar input[type=text] { flex: 1; min-width: 140px; }
+.modal-bg { display: none; min-height: 480px; background: rgba(0,0,0,0.35); border-radius: 12px; align-items: center; justify-content: center; margin-bottom: 1rem; }
+.modal-bg.open { display: flex; }
+.modal { background: white; border: 0.5px solid #ddd; border-radius: 12px; padding: 1.25rem; width: 100%; max-width: 520px; max-height: 85vh; overflow-y: auto; }
+.modal-title { font-size: 15px; font-weight: 500; margin-bottom: 1rem; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group.full { grid-column: 1/-1; }
+.form-group label { font-size: 12px; color: #666; font-weight: 500; }
+.form-group input, .form-group select, .form-group textarea { font-size: 13px; padding: 6px 10px; border: 0.5px solid #ddd; border-radius: 6px; }
+.drop-zone { grid-column: 1/-1; border: 2px dashed #ddd; border-radius: 8px; padding: 24px; text-align: center; cursor: pointer; background: #f9f9f9; transition: all 0.2s; }
+.drop-zone:hover { border-color: #999; background: #f5f5f5; }
+.drop-zone.dragover { border-color: #1976d2; background: #e3f2fd; }
+.drop-zone-text { font-size: 13px; color: #666; margin: 0; }
+.drop-zone-hint { font-size: 12px; color: #999; margin: 6px 0 0; }
+#pdf-preview { grid-column: 1/-1; font-size: 12px; color: #666; display: none; padding: 10px; background: #f9f9f9; border-radius: 6px; margin-bottom: 10px; }
+.modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1rem; }
+.btn-primary { background: #333; color: white; border: none; font-size: 13px; padding: 7px 16px; border-radius: 6px; cursor: pointer; font-weight: 500; transition: all 0.2s; }
+.btn-primary:hover { opacity: 0.85; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.histo-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 0.5px solid #eee; }
+.histo-month { font-size: 12px; color: #666; min-width: 70px; }
+.histo-bar-wrap { flex: 1; height: 8px; background: #f0f0f0; border-radius: 4px; overflow: hidden; }
+.histo-bar { height: 100%; border-radius: 4px; background: #1976d2; }
+.histo-amount { font-size: 13px; font-weight: 500; min-width: 80px; text-align: right; }
+.histo-count { font-size: 11px; color: #666; min-width: 50px; text-align: right; }
+.view { display: none; }
+.view.active { display: block; }
+.no-data { text-align: center; padding: 2rem; color: #999; font-size: 13px; }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="app-title">📄 Factures fournisseurs</span>
+    </div>
+    <button class="btn-new" onclick="openModal()">
+      ➕ Nouvelle facture
+    </button>
+  </div>
+
+  <div class="modal-bg" id="modal-bg">
+    <div class="modal">
+      <p class="modal-title">Ajouter une facture</p>
+      <div class="form-row">
+        <div class="form-group full">
+          <label>Déposer un PDF ou remplir manuellement</label>
+          <div class="drop-zone" id="drop-zone" ondrop="handleDrop(event)" ondragover="event.preventDefault(); document.getElementById('drop-zone').classList.add('dragover')" ondragleave="document.getElementById('drop-zone').classList.remove('dragover')" onclick="document.getElementById('pdf-input').click()">
+            <p style="font-size:24px;margin-bottom:8px;">📤</p>
+            <p class="drop-zone-text">Cliquez ou déposez un PDF ici</p>
+            <p class="drop-zone-hint">L'IA extraira les infos automatiquement</p>
+            <input type="file" id="pdf-input" accept=".pdf" style="display:none" onchange="handleFileSelect(event)">
+          </div>
+          <div id="pdf-preview"></div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Fournisseur *</label>
+          <input type="text" id="f-fourn" placeholder="Ex: Achat Pro SARL" />
+        </div>
+        <div class="form-group">
+          <label>N° facture *</label>
+          <input type="text" id="f-num" placeholder="FAC-2026-001" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Montant TTC (€) *</label>
+          <input type="number" id="f-montant" placeholder="0.00" step="0.01" />
+        </div>
+        <div class="form-group">
+          <label>Date d'échéance *</label>
+          <input type="date" id="f-echeance" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Date de réception</label>
+          <input type="date" id="f-reception" />
+        </div>
+        <div class="form-group">
+          <label>Statut</label>
+          <select id="f-statut">
+            <option value="nouveau">Nouveau</option>
+            <option value="attente">À payer</option>
+            <option value="paye">Payé</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group full">
+        <label>Nom du fichier PDF</label>
+        <input type="text" id="f-pdf" placeholder="facture_fournisseur.pdf" />
+      </div>
+      <div class="modal-footer">
+        <button class="nav-btn" onclick="closeModal()">Annuler</button>
+        <button class="btn-primary" id="btn-save" onclick="addFacture()">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="nav">
+    <button class="nav-btn active" onclick="switchView('dashboard', this)">📊 Dashboard</button>
+    <button class="nav-btn" onclick="switchView('liste', this)">📋 Factures</button>
+    <button class="nav-btn" onclick="switchView('historique', this)">📈 Historique</button>
+  </div>
+
+  <div id="view-dashboard" class="view active">
+    <div class="metrics" id="metrics"></div>
+    <div id="alerts-zone"></div>
+    <p class="section-title" style="margin-top:1rem;">Dernières factures</p>
+    <div class="table-wrap"><table id="table-recent">
+      <thead><tr>
+        <th style="width:22%">Fournisseur</th>
+        <th style="width:14%">N° facture</th>
+        <th style="width:12%">Montant</th>
+        <th style="width:15%">Échéance</th>
+        <th style="width:13%">Statut</th>
+        <th style="width:24%">Actions</th>
+      </tr></thead>
+      <tbody id="tbody-recent"></tbody>
+    </table></div>
+  </div>
+
+  <div id="view-liste" class="view">
+    <div class="toolbar">
+      <input type="text" id="search-input" placeholder="Rechercher fournisseur, n°..." oninput="renderListe()" />
+      <select id="filter-statut" onchange="renderListe()">
+        <option value="">Tous les statuts</option>
+        <option value="nouveau">Nouveau</option>
+        <option value="attente">À payer</option>
+        <option value="retard">En retard</option>
+        <option value="paye">Payé</option>
+      </select>
+    </div>
+    <div class="table-wrap"><table id="table-liste">
+      <thead><tr>
+        <th style="width:20%">Fournisseur</th>
+        <th style="width:14%">N° facture</th>
+        <th style="width:11%">Montant</th>
+        <th style="width:12%">Réception</th>
+        <th style="width:12%">Échéance</th>
+        <th style="width:11%">Statut</th>
+        <th style="width:20%">Actions</th>
+      </tr></thead>
+      <tbody id="tbody-liste"></tbody>
+    </table></div>
+  </div>
+
+  <div id="view-historique" class="view">
+    <p class="section-title">Total réglé par mois</p>
+    <div id="histo-chart"></div>
+    <div style="margin-top:1.5rem;">
+      <p class="section-title">Factures payées</p>
+      <div class="table-wrap"><table id="table-histo">
+        <thead><tr>
+          <th style="width:20%">Fournisseur</th>
+          <th style="width:14%">N° facture</th>
+          <th style="width:12%">Montant</th>
+          <th style="width:12%">Réception</th>
+          <th style="width:14%">Échéance</th>
+          <th style="width:28%">Fichier</th>
+        </tr></thead>
+        <tbody id="tbody-histo"></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+const COLORS = ['#378ADD','#1D9E75','#D85A30','#534AB7','#BA7517','#D4537E','#639922'];
+let factures = [];
+let colorMap = {};
+let colorIdx = 0;
+
+function getColor(fourn) {
+  if (!colorMap[fourn]) { colorMap[fourn] = COLORS[colorIdx % COLORS.length]; colorIdx++; }
+  return colorMap[fourn];
+}
+
+async function loadFromSupabase() {
+  const supabaseUrl = 'https://mimuqswvyhgsasvbyem.supabase.co';
+  const supabaseKey = 'sb_publishable_Wqfl50Qyb7dpuxIxz_BxSA_o9cvD...';
+  
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/factures_fournisseurs?select=*`, {
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.length > 0) {
+        factures = data.map((row, idx) => ({
+          id: row.id || 100000 + idx,
+          fournisseur: row.fournisseur || '',
+          num: row.numero || '',
+          montant: parseFloat(row.montant) || 0,
+          echeance: row.echeance || '',
+          reception: row.created_at ? row.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+          statut: 'nouveau',
+          pdf: row.fichier_source || ''
+        }));
+      }
+    }
+  } catch (error) {
+    console.log('Supabase: ' + error.message);
+  }
+}
+
+async function loadData() {
+  await loadFromSupabase();
+  factures.forEach(f => getColor(f.fournisseur));
+  render();
+}
+
+async function saveData() {
+  try { await window.storage.set('factures_local', JSON.stringify(factures)); } catch(e) { localStorage.setItem('factures_local', JSON.stringify(factures)); }
+}
+
+function computeStatut(f) {
+  if (f.statut === 'paye') return 'paye';
+  const today = new Date(); today.setHours(0,0,0,0);
+  const ech = new Date(f.echeance);
+  const diff = Math.ceil((ech - today) / 86400000);
+  if (diff < 0) return 'retard';
+  if (f.statut === 'nouveau') return 'nouveau';
+  return 'attente';
+}
+
+function fmtDate(s) { if (!s) return '—'; const [y,m,d] = s.split('-'); return `${d}/${m}/${y}`; }
+function fmtMoney(n) { return Number(n).toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €'; }
+
+function badgeHtml(st) {
+  if (st==='retard') return '<span class="badge badge-retard">En retard</span>';
+  if (st==='attente') return '<span class="badge badge-attente">À payer</span>';
+  if (st==='paye') return '<span class="badge badge-paye">Payé</span>';
+  if (st==='nouveau') return '<span class="badge badge-nouveau">Nouveau</span>';
+  return '';
+}
+
+function daysLabel(echeance) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const ech = new Date(echeance);
+  const diff = Math.ceil((ech - today) / 86400000);
+  if (diff < 0) return `<span style="color:#d32f2f;font-size:11px;">${Math.abs(diff)}j retard</span>`;
+  if (diff === 0) return `<span style="color:#d32f2f;font-size:11px;">Aujourd'hui</span>`;
+  if (diff <= 3) return `<span style="color:#f57c00;font-size:11px;">J+${diff}</span>`;
+  return `<span style="color:#666;font-size:11px;">J+${diff}</span>`;
+}
+
+function render() { renderMetrics(); renderAlerts(); renderRecent(); renderListe(); renderHisto(); }
+
+function renderMetrics() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const month = today.getMonth(); const year = today.getFullYear();
+  const active = factures.filter(f => f.statut !== 'paye');
+  const retard = active.filter(f => new Date(f.echeance) < today);
+  const alerte = active.filter(f => { const d = Math.ceil((new Date(f.echeance)-today)/86400000); return d>=0 && d<=3; });
+  const totalMois = factures.filter(f => { const d = new Date(f.echeance); return d.getMonth()===month && d.getFullYear()===year && f.statut!=='paye'; }).reduce((s,f)=>s+Number(f.montant),0);
+  const totalPaye = factures.filter(f => f.statut==='paye').reduce((s,f)=>s+Number(f.montant),0);
+  document.getElementById('metrics').innerHTML = `
+    <div class="metric"><div class="metric-label">⏱️ À payer</div><div class="metric-value">${fmtMoney(totalMois)}</div></div>
+    <div class="metric"><div class="metric-label">⚠️ En retard</div><div class="metric-value danger">${retard.length}</div></div>
+    <div class="metric"><div class="metric-label">🔔 J-3</div><div class="metric-value warning">${alerte.length}</div></div>
+    <div class="metric"><div class="metric-label">✓ Total payé</div><div class="metric-value success">${fmtMoney(totalPaye)}</div></div>
+  `;
+}
+
+function renderAlerts() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const active = factures.filter(f => f.statut !== 'paye');
+  const retard = active.filter(f => new Date(f.echeance) < today);
+  const alerte = active.filter(f => { const d = Math.ceil((new Date(f.echeance)-today)/86400000); return d>=0 && d<=3; });
+  let html = '';
+  if (retard.length) html += `<div class="alert-band">⚠️ <strong>${retard.length} facture${retard.length>1?'s':''} en retard</strong></div>`;
+  if (alerte.length) html += `<div class="warning-band">🔔 <strong>${alerte.length} facture${alerte.length>1?'s':''} à payer dans 3 jours</strong></div>`;
+  document.getElementById('alerts-zone').innerHTML = html;
+}
+
+function renderRecent() {
+  const sorted = [...factures].sort((a,b) => new Date(b.reception) - new Date(a.reception)).slice(0,6);
+  document.getElementById('tbody-recent').innerHTML = sorted.map(f => {
+    const st = computeStatut(f);
+    return `<tr><td><span class="fournisseur-dot" style="background:${getColor(f.fournisseur)};"></span>${f.fournisseur}</td><td style="color:#666;">${f.num}</td><td>${fmtMoney(f.montant)}</td><td>${fmtDate(f.echeance)}<br>${daysLabel(f.echeance)}</td><td>${badgeHtml(st)}</td><td><div class="actions">${f.pdf ? `<button class="icon-btn" title="Télécharger" onclick="downloadPdf('${f.pdf}')">⬇️</button>` : ''}${f.statut!=='paye' ? `<button class="icon-btn" title="Marquer payé" onclick="marquerPaye(${f.id})">✓</button>` : ''}<button class="icon-btn" title="Supprimer" onclick="supprimer(${f.id})">🗑️</button></div></td></tr>`;
+  }).join('') || '<tr><td colspan="6" class="no-data">Aucune facture</td></tr>';
+}
+
+function renderListe() {
+  const q = (document.getElementById('search-input')?.value||'').toLowerCase();
+  const fs = document.getElementById('filter-statut')?.value||'';
+  let data = [...factures].sort((a,b) => new Date(b.reception)-new Date(a.reception));
+  if (q) data = data.filter(f => f.fournisseur.toLowerCase().includes(q) || f.num.toLowerCase().includes(q));
+  if (fs) data = data.filter(f => computeStatut(f) === fs);
+  document.getElementById('tbody-liste').innerHTML = data.map(f => {
+    const st = computeStatut(f);
+    return `<tr><td><span class="fournisseur-dot" style="background:${getColor(f.fournisseur)};"></span>${f.fournisseur}</td><td style="color:#666;">${f.num}</td><td>${fmtMoney(f.montant)}</td><td style="color:#666;">${fmtDate(f.reception)}</td><td>${fmtDate(f.echeance)}</td><td>${badgeHtml(st)}</td><td><div class="actions">${f.pdf ? `<button class="icon-btn" title="PDF" onclick="downloadPdf('${f.pdf}')">⬇️</button>` : ''}${f.statut!=='paye' ? `<button class="icon-btn" title="Marquer payé" onclick="marquerPaye(${f.id})">✓</button>` : ''}<button class="icon-btn" title="Supprimer" onclick="supprimer(${f.id})">🗑️</button></div></td></tr>`;
+  }).join('') || '<tr><td colspan="7" class="no-data">Aucune facture trouvée</td></tr>';
+}
+
+function renderHisto() {
+  const byMonth = {};
+  factures.filter(f=>f.statut==='paye').forEach(f => {
+    const d = new Date(f.echeance);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const label = d.toLocaleDateString('fr-FR',{month:'short',year:'numeric'});
+    if (!byMonth[key]) byMonth[key] = {label, total:0, count:0};
+    byMonth[key].total += Number(f.montant);
+    byMonth[key].count++;
+  });
+  const months = Object.values(byMonth).sort((a,b)=>a.label.localeCompare(b.label));
+  const max = Math.max(...months.map(m=>m.total), 1);
+  document.getElementById('histo-chart').innerHTML = months.length ? months.map(m=>`<div class="histo-row"><span class="histo-month">${m.label}</span><div class="histo-bar-wrap"><div class="histo-bar" style="width:${Math.round(m.total/max*100)}%"></div></div><span class="histo-amount">${fmtMoney(m.total)}</span><span class="histo-count">${m.count} fac.</span></div>`).join('') : '<div class="no-data">Aucune facture payée</div>';
+  const payees = factures.filter(f=>f.statut==='paye').sort((a,b)=>new Date(b.echeance)-new Date(a.echeance));
+  document.getElementById('tbody-histo').innerHTML = payees.map(f=>`<tr><td><span class="fournisseur-dot" style="background:${getColor(f.fournisseur)};"></span>${f.fournisseur}</td><td style="color:#666;">${f.num}</td><td>${fmtMoney(f.montant)}</td><td style="color:#666;">${fmtDate(f.reception)}</td><td style="color:#666;">${fmtDate(f.echeance)}</td><td>${f.pdf ? `<button class="icon-btn" title="PDF" style="font-size:12px;gap:4px;display:inline-flex;" onclick="downloadPdf('${f.pdf}')">⬇️ ${f.pdf}</button>` : '—'}</td></tr>`).join('') || '<tr><td colspan="6" class="no-data">Aucune facture payée</td></tr>';
+}
+
+function switchView(v, btn) {
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  btn.classList.add('active');
+}
+
+function openModal() { 
+  document.getElementById('pdf-preview').style.display = 'none';
+  document.getElementById('modal-bg').classList.add('open'); 
+}
+
+function closeModal() { 
+  document.getElementById('modal-bg').classList.remove('open');
+  ['f-fourn','f-num','f-montant','f-echeance','f-reception','f-pdf'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-statut').value='nouveau';
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('dragover');
+  const files = e.dataTransfer.files;
+  if (files.length > 0) processPdf(files[0]);
+}
+
+function handleFileSelect(e) {
+  const files = e.target.files;
+  if (files.length > 0) processPdf(files[0]);
+}
+
+async function processPdf(file) {
+  if (file.type !== 'application/pdf') { alert('Veuillez déposer un PDF'); return; }
+  document.getElementById('f-pdf').value = file.name;
+  const preview = document.getElementById('pdf-preview');
+  preview.textContent = `📄 ${file.name} — Extraction en cours...`;
+  preview.style.display = 'block';
+  preview.style.color = '#666';
+  
+  try {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const pdfBase64 = e.target.result.split(',')[1];
+      const response = await fetch('https://hook.eu1.make.com/1zhzhpbpngqntu23uvwwlc1nymer6bps', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pdfBase64 }),
+      });
+      if (!response.ok) throw new Error('Extraction échouée');
+      const data = await response.json();
+      document.getElementById('f-fourn').value = data.fournisseur || '';
+      document.getElementById('f-montant').value = data.montant || '';
+      document.getElementById('f-echeance').value = data.echeance || '';
+      document.getElementById('f-reception').value = new Date().toISOString().split('T')[0];
+      if (!document.getElementById('f-num').value) document.getElementById('f-num').value = data.numero || '';
+      preview.textContent = `✓ Extraction réussie`;
+      preview.style.color = '#388e3c';
+    };
+    reader.readAsDataURL(file);
+  } catch (error) {
+    preview.textContent = `✗ Erreur : ${error.message}`;
+    preview.style.color = '#d32f2f';
+  }
+}
+
+function addFacture() {
+  const fourn = document.getElementById('f-fourn').value.trim();
+  const num = document.getElementById('f-num').value.trim();
+  const montant = parseFloat(document.getElementById('f-montant').value);
+  const echeance = document.getElementById('f-echeance').value;
+  const reception = document.getElementById('f-reception').value || new Date().toISOString().split('T')[0];
+  const statut = document.getElementById('f-statut').value;
+  const pdf = document.getElementById('f-pdf').value.trim();
+  
+  if (!fourn || !montant || isNaN(montant) || !echeance) { alert('Remplissez les champs obligatoires'); return; }
+  
+  const id = Date.now();
+  const newNum = num || `FAC-${new Date().getFullYear()}-${String(factures.length+1).padStart(3,'0')}`;
+  factures.unshift({id, fournisseur:fourn, num:newNum, montant, echeance, reception, statut, pdf});
+  getColor(fourn);
+  saveData(); render(); closeModal();
+}
+
+function marquerPaye(id) {
+  const f = factures.find(x=>x.id===id);
+  if (f) { f.statut='paye'; saveData(); render(); }
+}
+
+function supprimer(id) {
+  if (confirm('Supprimer cette facture ?')) {
+    factures = factures.filter(x=>x.id!==id);
+    saveData(); render();
+  }
+}
+
+function downloadPdf(name) {
+  alert(`Téléchargement de ${name}`);
+}
+
+loadData();
+</script>
+</body>
+</html>
