@@ -232,16 +232,36 @@ function getColor(fourn) {
 }
 
 async function loadFromSupabase() {
-const supabaseUrl = 'https://mimuqswvyhgsasvbyem.supabase.co';
-const supabaseKey = 'sb_publishable_Wqfl50Qyb7dpuxIxz_BxSA_o9cvDSR2';
+  const supabaseUrl = 'https://mimuqswvyhgsasvbyem.supabase.co';
+  const supabaseKey = 'sb_publishable_Wqfl50Qyb7dpuxIxz_BxSA_o9cvDSR2';
   
   try {
     const response = await fetch(`${supabaseUrl}/rest/v1/factures_fournisseurs`, {
       headers: {
         'apikey': supabaseKey,
-        'Authorization': `Bearer ${supabaseKey}`,
         'Content-Type': 'application/json'
       }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.length > 0) {
+        factures = data.map((row, idx) => ({
+          id: row.id || 100000 + idx,
+          fournisseur: row.fournisseur || '',
+          num: row.numero || '',
+          montant: parseFloat(row.montant) || 0,
+          echeance: row.echeance || '',
+          reception: row.created_at ? row.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+          statut: 'nouveau',
+          pdf: row.fichier_source || ''
+        }));
+      }
+    }
+  } catch (error) {
+    console.log('Supabase: ' + error.message);
+  }
+}
     });
     
     if (response.ok) {
